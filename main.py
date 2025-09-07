@@ -4,7 +4,7 @@ import random
 import evnironmentData as enV
 import assets
 import ballMovement as bm
-
+import asyncio
 
 
 pygame.init()
@@ -28,6 +28,7 @@ rightPlayerScore=0
 
 toMultiply = bm.d
 running = True
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -47,6 +48,7 @@ while running:
 
 
     keys = pygame.key.get_pressed()
+
 
 
     if keys[pygame.K_w]:
