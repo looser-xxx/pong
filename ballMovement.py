@@ -1,7 +1,7 @@
 
 ballSpeed=6
 playerSpeed=7
-toScore=5
+toScore=15
 
 x=ballSpeed
 
