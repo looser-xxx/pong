@@ -12,3 +12,6 @@ screen = pygame.display.set_mode(screenSize)
 
 # Create the clock
 clock = pygame.time.Clock()
+
+
+font = pygame.font.Font(None, 74) # None for the default font, 74 is the font size
