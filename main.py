@@ -1,185 +1,160 @@
 import pygame
-import sys
 import random
-import evnironmentData as enV
-import assets
-import ballMovement as bm
-import asyncio
+import sys
+from pygments.styles.rainbow_dash import WHITE
+
+import gameSettings as eV
 
 
-pygame.init()
-pygame.mixer.init()
-file=['1.wav','2.wav','3.wav']
+# player class
+class Player:
+    def __init__(self, x,y):
+        self.x=x
+        self.y=y
+        self.playerSpeed=eV.playerSpeed
+        self.playerHeight=eV.playerHeight
+        self.playerWidth=eV.playerDepthPercent/100*eV.screenWidth
+        self.rect=pygame.FRect(self.x,self.y,self.playerWidth,self.playerHeight)
 
-padHitSfx=pygame.mixer.Sound('audio/hit/padHit.wav')
-bounceHitSfx=pygame.mixer.Sound('audio/hit/bounceHit.wav')
-bounceHitSfx.set_volume(0.1)
-endFrameSfx=pygame.mixer.Sound('audio/fart/endFart.wav')
 
-# Position the divider rect here, after it has been imported
-assets.dividerRect.centerx = enV.screenSize[0] / 2
-assets.dividerRect.y = 0
+    def move(self, direction=0):
+        if direction==0:
+            self.rect.y-=self.playerSpeed
+        else:
+            self.rect.y+=self.playerSpeed
 
-assets.playerRect.centery = enV.screenSize[1] / 2
-rightPlayerRect = assets.playerRect.copy()
+        if self.rect.top<0:
+            self.rect.top=0
+        if self.rect.bottom>eV.screenHeight:
+            self.rect.bottom=eV.screenHeight
 
-leftPlayerScore=0
-rightPlayerScore=0
 
-toMultiply = bm.d
-running = True
-
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    path = 'audio/fart/' + random.choice(file)
-    scoreSfx = pygame.mixer.Sound(path)
+    def draw(self,screen):
+        pygame.draw.rect(screen,WHITE, self.rect)
 
 
 
+class Ball:
+    def __init__(self,x,y):
+        self.x=x
+        self.y=y
+        self.radius=eV.ballRadius
+        self.speedX=eV.ballSpeed * random.choice([1,-1])
+        self.speedY=eV.ballSpeed * random.choice([1,-1])
+        self.rect=pygame.FRect(x-self.radius,y-self.radius,self.radius*2,self.radius*2)
 
-    # Fill the entire screen with a background color (e.g., black)
-    enV.screen.fill((0, 0, 0))
+    def draw(self,screen):
+        pygame.draw.circle(screen,WHITE, self.rect.center,self.radius)
 
-    # Blit the divider onto the main screen using its rect
-    enV.screen.blit(assets.dividerSurface, assets.dividerRect)
+    def move(self):
+        self.rect.x+=self.speedX
+        self.rect.y+=self.speedY
 
+    def bounce(self,axis):
+        if axis=='y':
+            self.speedY*=-1
 
-    keys = pygame.key.get_pressed()
-
-
-
-    if keys[pygame.K_w]:
-        assets.playerRect.y -= bm.playerSpeed
-    if keys[pygame.K_s]:
-        assets.playerRect.y += bm.playerSpeed
-    if assets.playerRect.bottom > enV.screenSize[1]:
-        assets.playerRect.bottom = enV.screenSize[1]
-    if assets.playerRect.top < 0:
-        assets.playerRect.top = 0
-
-    enV.screen.blit(assets.playerSurface, assets.playerRect)
-
-
-    if keys[pygame.K_UP]:
-        rightPlayerRect.y -= bm.playerSpeed
-    if keys[pygame.K_DOWN]:
-        rightPlayerRect.y += bm.playerSpeed
-
-    if rightPlayerRect.top < 0:
-        rightPlayerRect.top = 0
-    if rightPlayerRect.bottom > enV.screenSize[1]:
-        rightPlayerRect.bottom = enV.screenSize[1]
+        if axis=='x':
+            self.speedX*=-1
 
 
+    def reset(self):
+        self.rect.center=eV.screenCenter
 
-    rightPlayerSurface=assets.playerSurface
-    rightPlayerRect.right=enV.screenSize[0]
-    enV.screen.blit(rightPlayerSurface, rightPlayerRect)
-
-
-
-    assets.ballRect.right+=toMultiply[0]
-    assets.ballRect.bottom+=toMultiply[1]
-
-    if assets.ballRect.bottom >= enV.screenSize[1] and toMultiply==bm.a:
-        print("bottom ",toMultiply)
-        bounceHitSfx.play()
-        toMultiply=bm.d
+        self.speedX*=random.choice([1,-1])
+        self.speedY*=random.choice([1,-1])
 
 
+class PongGame:
 
-    if assets.ballRect.bottom >= enV.screenSize[1] and toMultiply==bm.b:
-        print("bottom ",toMultiply)
-        bounceHitSfx.play()
-        toMultiply=bm.c
+    def __init__(self):
+        pygame.init()
 
+        self.screen=pygame.display.set_mode((eV.screenWidth,eV.screenHeight))
+        pygame.display.set_caption('Pong')
+        self.clock=pygame.time.Clock()
 
-    if assets.ballRect.top <= 0 and toMultiply==bm.c:
-        print("top ",toMultiply)
-        bounceHitSfx.play()
-        toMultiply=bm.b
+        self.player1=Player(eV.playerDepthPercent/100*eV.screenWidth,eV.screenHeight/2-eV.playerHeight/2)
+        self.computer=Player(eV.screenWidth-(eV.playerDepthPercent/100*eV.screenWidth)*2,eV.screenHeight/2-eV.playerHeight/2)
+        self.ball=Ball(eV.screenWidth/2,eV.screenHeight/2)
 
-    if assets.ballRect.top <= 0 and toMultiply==bm.d:
-        print("top ",toMultiply)
-        bounceHitSfx.play()
-        toMultiply=bm.a
+        self.playerScore=0
+        self.computerScore=0
+        self.font=pygame.font.SysFont('comicsans',30)
 
+    def playerInput(self):
+        keys=pygame.key.get_pressed()
+        if keys[pygame.K_w]:
+            self.player1.move(0)
+        if keys[pygame.K_s]:
+            self.player1.move(1)
 
-    if assets.ballRect.left < 20 :
-        if assets.playerRect.top<assets.ballRect.midleft[1]<assets.playerRect.bottom:
-            padHitSfx.play()
-            if toMultiply==bm.b:
-                toMultiply = bm.a
-            else:
-                toMultiply = bm.d
-        elif assets.ballRect.right < 0:
-            rightPlayerScore+=1
-            scoreSfx.play()
-            assets.ballRect.center=enV.screenCenter
-            toMultiply = bm.d
+    def computerMovement(self):
+
+        chance = random.randint(1, 100)
+        if chance <= eV.difficulty:
+            if self.computer.rect.center[1] < self.ball.rect.center[1]:
+                self.computer.move(1)
+            elif self.computer.rect.center[1] > self.ball.rect.center[1]:
+                self.computer.move(0)
+        else:
+            random_move = random.choice([-1, 0, 1])
+            if random_move == -1:
+                self.computer.move(1)
+            elif random_move == 1:
+                self.computer.move(0)
 
 
 
-    if assets.ballRect.right > enV.screenSize[0]-20:
-        if rightPlayerRect.top<assets.ballRect.midright[1]<rightPlayerRect.bottom :
-            padHitSfx.play()
-            if toMultiply==bm.d:
-                toMultiply = bm.c
-            else:
-                toMultiply = bm.b
-        elif assets.ballRect.left > enV.screenSize[0]:
-            leftPlayerScore+=1
-            scoreSfx.play()
-            assets.ballRect.center=enV.screenCenter
-            toMultiply = bm.c
 
 
 
-    enV.screen.blit(assets.ballSurface, assets.ballRect)
 
-    # Render the scores as text surfaces
-    leftScoreText = enV.font.render(str(leftPlayerScore), True, (255, 255, 255)) # The color is white
-    rightScoreText = enV.font.render(str(rightPlayerScore), True, (255, 255, 255))
+    def collision(self):
 
-    # Blit the scores onto the screen
-    enV.screen.blit(leftScoreText, (enV.screenSize[0] / 4, 10))
-    enV.screen.blit(rightScoreText, (enV.screenSize[0] * 3 / 4, 10))
+        if self.ball.rect.top<0 or self.ball.rect.bottom>eV.screenHeight:
+            self.ball.bounce('y')
+
+        if self.ball.rect.colliderect(self.player1.rect) or self.ball.rect.colliderect(self.computer.rect):
+            self.ball.bounce('x')
 
 
-    if leftPlayerScore ==bm.toScore or rightPlayerScore ==bm.toScore:
-        endFrame=True
+        if self.ball.rect.left < 0:
+            self.computerScore+=1
+            self.ball.reset()
+        if self.ball.rect.right > eV.screenWidth:
+            self.playerScore+=1
+            self.ball.reset()
 
-        while endFrame:
+    def draw(self):
+        self.screen.fill('black')
+        pygame.draw.aaline(self.screen,WHITE,(eV.screenWidth/2,0),(eV.screenWidth/2,eV.screenHeight))
 
+        self.player1.draw(self.screen)
+        self.computer.draw(self.screen)
+        self.ball.draw(self.screen)
+
+
+        self.screen.blit(self.font.render(str(self.playerScore),True,WHITE),(eV.screenWidth/4,20))
+        self.screen.blit(self.font.render(str(self.computerScore), True, WHITE), (eV.screenWidth * 3 / 4, 20))
+
+
+        pygame.display.flip()
+
+    def runGame(self):
+
+        while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    endFrame = False
-            enV.screen.fill((0, 0, 0))
-            pygame.display.flip()
-            enV.screen.blit(leftScoreText, (enV.screenSize[0] / 4,(enV.screenSize[1] / 2-45)))
-            enV.screen.blit(rightScoreText, (enV.screenSize[0] * 3 / 4, (enV.screenSize[1] / 2-45)))
-            endFrameSfx.play()
+                    pygame.quit()
+                    sys.exit()
 
+            self.playerInput()
+            self.computerMovement()
+            self.ball.move()
+            self.collision()
+            self.draw()
 
-
-
-            pygame.display.flip()
-            enV.clock.tick(60)
-
-        running=False
-
-    # Update the display to show the changes
-    pygame.display.flip()
-
-    # Cap the frame rate
-    enV.clock.tick(60)
-
-pygame.quit()
-
-print(leftPlayerScore)
-print(rightPlayerScore)
-
-sys.exit()
+if __name__ == "__main__":
+    pongGame = PongGame()
+    pongGame.runGame()
